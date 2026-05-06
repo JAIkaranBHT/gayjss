@@ -1,4 +1,6 @@
 livekit-agents~=1.5
-livekit-plugins-livekit~=0.6
-livekit-plugins-silero~=0.6
+livekit-plugins-openai
+livekit-plugins-deepgram
+livekit-plugins-cartesia
+livekit-plugins-silero
 python-dotenv>=1.0.1
