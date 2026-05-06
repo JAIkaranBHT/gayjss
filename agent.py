@@ -20,48 +20,73 @@ if not os.getenv("LIVEKIT_URL") and os.getenv("LIVEKIT_WEBSOCKET_URL"):
 
 INSTRUCTIONS = """
 You are Solace, a warm, smart, helpful AI companion.
-You can see the user's live screen share. When the user asks about what is on their screen, look at the image provided and answer based on what you see.
-If the screen is not visible yet, tell them to share it.
-Speak naturally like a helpful friend. Keep replies short and clear.
+You CAN see the user's live screen share — it is attached as an image to every message.
+When the user asks what is on their screen, describe exactly what you see in the image.
+Speak naturally like a helpful friend. Keep replies short and clear unless asked for more detail.
 """
 
-latest_image = None
+# Global reference to the latest screen frame
+latest_frame: rtc.VideoFrame | None = None
+
 
 class SolaceAgent(Agent):
     def __init__(self):
         super().__init__(instructions=INSTRUCTIONS)
 
     async def llm_node(self, chat_ctx, tools, model_settings):
-        global latest_image
-        if latest_image:
+        global latest_frame
+
+        # Inject latest screen frame into the last user message before sending to LLM
+        if latest_frame is not None:
             for msg in reversed(chat_ctx.messages):
                 if msg.role == "user":
+                    # Make sure content is a list so we can append the image
                     if isinstance(msg.content, str):
                         msg.content = [msg.content]
-                    msg.content.append(llm.ChatImage(image=latest_image))
-                    print("[agent] Injected screen frame into LLM context.")
+                    elif not isinstance(msg.content, list):
+                        msg.content = []
+                    msg.content.append(llm.ChatImage(image=latest_frame))
+                    print("[agent] ✅ Screen frame injected into LLM context!")
                     break
+        else:
+            print("[agent] ⚠️ No screen frame available yet.")
+
         async for chunk in super().llm_node(chat_ctx, tools, model_settings):
             yield chunk
 
 
 async def entrypoint(ctx: JobContext):
-    global latest_image
+    global latest_frame
 
     await ctx.connect()
-    print(f"[agent] connected to room: {ctx.room.name}")
+    print(f"[agent] ✅ Connected to room: {ctx.room.name}")
+
+    async def capture_video_frames(track: rtc.VideoTrack):
+        global latest_frame
+        print(f"[agent] 🎥 Started capturing frames from track: {track.sid}")
+        stream = rtc.VideoStream(track, format=rtc.VideoBufferType.RGBA)
+        async for event in stream:
+            latest_frame = event.frame
 
     @ctx.room.on("track_subscribed")
-    def on_track_subscribed(track: rtc.Track, publication, participant):
+    def on_track_subscribed(
+        track: rtc.Track,
+        publication: rtc.RemoteTrackPublication,
+        participant: rtc.RemoteParticipant,
+    ):
         if track.kind == rtc.TrackKind.KIND_VIDEO:
-            print("[agent] Screen share detected! Capturing frames.")
-            asyncio.create_task(capture_frames(track))
+            print(f"[agent] 📺 Video track detected from {participant.identity}! Starting capture.")
+            asyncio.create_task(capture_video_frames(track))
 
-    async def capture_frames(track: rtc.VideoTrack):
-        global latest_image
-        stream = rtc.VideoStream(track)
-        async for event in stream:
-            latest_image = event.frame
+    # Check if video track is already published before we subscribed
+    for participant in ctx.room.remote_participants.values():
+        for publication in participant.track_publications.values():
+            if (
+                publication.track is not None
+                and publication.track.kind == rtc.TrackKind.KIND_VIDEO
+            ):
+                print("[agent] 📺 Found existing video track, capturing...")
+                asyncio.create_task(capture_video_frames(publication.track))
 
     session = AgentSession(
         stt=deepgram.STT(model="nova-2"),
@@ -75,7 +100,7 @@ async def entrypoint(ctx: JobContext):
         room=ctx.room,
     )
 
-    await session.say("Hey, I'm here. Share your screen and ask me what you see!")
+    await session.say("Hey! I'm here and I can see your screen. Ask me anything about what's on it!")
 
 
 if __name__ == "__main__":
