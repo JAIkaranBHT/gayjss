@@ -4,3 +4,4 @@ livekit-plugins-deepgram
 livekit-plugins-cartesia
 livekit-plugins-silero
 python-dotenv>=1.0.1
+Pillow>=10.0.0
