@@ -13,8 +13,10 @@ from livekit.agents import (
 )
 from livekit.agents.pipeline import VoicePipelineAgent
 
-# ONLY using LiveKit plugins - No OpenAI or Google plugins!
-from livekit.plugins import livekit, silero
+# Import the standard plugins. 
+# Because there are no API keys for these providers in your Railway env, 
+# LiveKit automatically routes them through LiveKit Inference Sandbox using your LIVEKIT_API_KEY!
+from livekit.plugins import openai, deepgram, cartesia, silero
 
 load_dotenv()
 
@@ -67,15 +69,16 @@ async def solace_session(ctx: JobContext):
                 if isinstance(last_msg.content, str):
                     last_msg.content = [last_msg.content]
                 
-                # Inject the captured screen frame so LiveKit Inference can see it
+                # Inject the captured screen frame so the Inference LLM can see it
                 last_msg.content.append(llm.ChatImage(image=latest_image))
+                print("[agent] Injected screen frame into LLM context.")
 
-    # PURE LIVEKIT INFERENCE - NO EXTERNAL API KEYS
+    # PURE LIVEKIT INFERENCE - NO EXTERNAL API KEYS REQUIRED
     agent = VoicePipelineAgent(
         vad=silero.VAD.load(),
-        stt=livekit.STT(), # LiveKit Sandbox STT
-        llm=livekit.LLM(model="gpt-4o"), # Proxied to vision model via LiveKit Cloud
-        tts=livekit.TTS(), # LiveKit Sandbox TTS
+        stt=deepgram.STT(model="nova-3"),
+        llm=openai.LLM(model="gpt-4o"),
+        tts=cartesia.TTS(model="sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"),
         chat_ctx=llm.ChatContext().append(
             role="system",
             text=SOLACE_INSTRUCTIONS,
