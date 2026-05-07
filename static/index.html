@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solace</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "livekit-client": "https://esm.sh/livekit-client@2.8.1"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="brand">
+          <div class="dot"></div>
+          <div>
+            <h1>Solace</h1>
+            <p class="sub">Screen share → AI companion</p>
+          </div>
+        </div>
+        <div class="status" id="status">
+          <span class="pill" id="statusPill">Disconnected</span>
+        </div>
+      </header>
+
+      <section class="card setup" id="setup">
+        <h2>Talk to Solace</h2>
+        <p class="hint">
+          Click join, allow your mic, then share your screen. Solace will describe what it sees.
+        </p>
+
+        <label>
+          Room name
+          <input id="roomName" type="text" value="solace-test" />
+        </label>
+
+        <div class="row">
+          <button id="joinBtn" class="primary">Join room</button>
+          <button id="leaveBtn" class="ghost" disabled>Leave</button>
+        </div>
+      </section>
+
+      <section class="card stage" id="stage" hidden>
+        <div class="controls">
+          <button id="shareBtn" class="primary">Start screen share</button>
+          <button id="stopShareBtn" class="ghost" disabled>Stop screen share</button>
+          <button id="muteBtn" class="ghost">Mute mic</button>
+        </div>
+        <div class="videos">
+          <div class="tile">
+            <div class="label">Your screen (local preview)</div>
+            <video id="localScreen" autoplay muted playsinline></video>
+          </div>
+          <div class="tile">
+            <div class="label">Agent audio</div>
+            <div class="vu" id="vu">
+              <div class="bar"></div>
+            </div>
+            <div class="agent-meta" id="agentMeta">Waiting for Solace to join…</div>
+          </div>
+        </div>
+        <div class="log" id="log"></div>
+      </section>
+
+      <footer>
+        <span>LiveKit client v2.8 · Solace on Railway</span>
+      </footer>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

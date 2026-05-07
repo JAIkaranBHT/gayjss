@@ -15,4 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "agent.py", "start"]
+# Pre-download Silero VAD weights so first request is fast
+RUN python agent.py download-files || true
+
+EXPOSE 8080
+
+# server.py runs BOTH the LiveKit worker (outbound to LiveKit Cloud) and
+# an HTTP server on $PORT that serves the frontend + /token endpoint.
+CMD ["python", "server.py"]
